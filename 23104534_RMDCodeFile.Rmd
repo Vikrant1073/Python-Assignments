@@ -1,0 +1,184 @@
+---
+---
+---
+
+# Assignment 3
+
+### Name: Vikrant Singh Jamwal
+
+### Student ID: 23104534
+
+### Goal**:**
+
+-   To analyse Apple App store data using R and perform several tasks.
+
+#### Importing Tidyverse Library
+
+```{r, Importing_Tidyverse}
+library(tidyverse)
+```
+
+### Task 1: Reading Apple Store data file.
+
+-   read_csv ( ) creates a tibble of the csv file.
+
+-   head ( ) visualizes n rows of the tibble.
+
+```{r, Reading_file}
+## 1
+apple_store <- read_csv("AppleStore.csv")
+head(apple_store, n=5)
+```
+
+### Task 2: Creating a column for frequency of different genres
+
+-   genre_count holds the count of each genre.
+
+```{r, Genre_count}
+## 2
+apple_store_t1 <- group_by(apple_store, prime_genre) %>% 
+              # grouped by prime_genre.
+              summarise( genre_count = n())
+              # summarise is used to summarise the data in each group (here count is used)
+head(apple_store_t1, n=10)
+```
+
+#### Visualizing different genre's count in the dataset.
+
+```{r, genre_count_barplot}
+ggplot(apple_store_t1, aes(x = prime_genre, y = genre_count)) + 
+      geom_bar(stat = "identity")+ # bar plot with "identity" stat.
+      labs(title="Genre Counts") + # Title of the plot
+      theme(axis.text.x = element_text(angle=90, vjust = 0.5, hjust= 1)) 
+      # vjust, hjust -- vertical/height adjust of the x-axis text.
+      # stat="count" can also be used to plot barplot without y argument.
+```
+
+### Task 3: Exploring and visualizing data with various plots
+
+-   **Violin plot:** A method of data distribution visualization containing aspects of both box plots and kernel density plots. The wider part tells the density of the data and the structure is based on the IQRs similar to box plots.
+
+-   **Histogram:** A frequency distribution visualization method. Involves range of continuous variable or factors of categorical variable and frequency of these range/factors.
+
+-   **BoxPlot:** Plot used to determine the outliers in the feature. The box represents the interquartile range (IQR), which is the range between the first quartile (Q1) and the third quartile (Q3).
+
+-   **Scatter Plot:** These Plots are useful for visualizing the correlation or pattern between two continuous variables.
+
+```{r, Visualization}
+## 3
+ggplot(apple_store, aes(x = factor(user_rating), y = size_bytes , fill=user_rating)) +
+      geom_violin()+
+      labs(title="Violin Plot for user rating and app size") +
+      xlab("User Ratings") +
+      ylab("App Size (bytes)")
+
+ggplot(apple_store, aes(x =  factor(user_rating), y = price , fill=user_rating)) +
+      geom_violin()+
+      labs(title="Violin Plot for user rating and app price") +
+      xlab("User Ratings") +
+      ylab("App Price")
+
+ggplot(apple_store, aes(x = factor(user_rating ))) +
+      geom_histogram(stat = "count")+
+      labs(title="Histogram for User rating") +
+      xlab("User rating") +
+      ylab("Count")
+
+ggplot(apple_store, aes(y= size_bytes)) +
+      geom_boxplot()+
+      labs(title="Box Plot for Total rating count") +
+      ylab("Total rating count")
+
+ggplot(apple_store, aes(x= size_bytes, y= price)) +
+      geom_point()+
+      labs(title="Scatter Plot for App size and App price") +
+      xlab("App Size") +
+      ylab("App Price")
+
+ggplot(apple_store, aes(x= rating_count_tot, y= price)) +
+      geom_point()+
+      labs(title="Scatter Plot for Total rating count and App price") +
+      xlab("Total rating count") +
+      ylab("App Price")
+```
+
+### Task 4: Total size of each genre
+
+```{r, Total_size}
+## 4
+apple_store_size <- group_by(apple_store, prime_genre) %>% 
+          summarise( "Size (bytes)" = sum(size_bytes),
+                      "Size (Mb)" = (sum(size_bytes)/(1024*1024)), 
+                      "Size (Gb)" = (sum(size_bytes)/(1024*1024*1024)))
+apple_store_size
+```
+
+### Task 5: Correlation between
+
+#### \* User Rating-Size
+
+```{r, User_rating-Size}
+as_cor_size <- cor(apple_store$user_rating, apple_store$size_bytes) 
+print(as_cor_size)
+```
+
+#### \* User Rating-Total Rating Count
+
+```{r, User_rating-Total_rating_count}
+as_cor_count <- cor(apple_store$rating_count_tot, apple_store$user_rating)
+print(as_cor_count)
+```
+
+#### Results:
+
+-   As Both are Weak Correlations:
+    -   Are larger apps (larger size in bytes) higher rated by customers?
+
+        \- Can not determine Accurately as correlation is weak and close to 0.
+
+    -   Are apps with more ratings higher rated?
+
+        \- Can not determine Accurately as correlation is weak and close to 0.
+
+### Task 6: Creating a "paid" column
+
+-   Two columns are created "Paid"- (0,1) and "Paid Description"- (Free, Paid)
+
+```{r, Paid}
+## 6
+apple_store_paid <- apple_store %>% 
+          mutate(paid = ifelse (price>0 , 1, 0))
+
+apple_store_paid <- apple_store_paid %>% 
+          mutate(paid_description = ifelse (paid==0 , "Free", "Paid"));
+
+paid_mean <- apple_store_paid %>% 
+            group_by("Paid Description"= paid_description) %>% 
+            summarize("User Rating Mean" = mean(user_rating));
+paid_mean
+```
+
+-   As the mean of User ratings for Paid Applications is higher than that of Free Applications, we can say that Paid Applications are rated higher than Free Applications in general.
+
+#### Visualizing User ratings for Free and Paid Apps using Box Plots
+
+```{r, Paid_boxplots}
+ggplot(apple_store_paid, aes(x = factor(paid, labels = c("Free Apps", "Paid Apps")), y = user_rating)) +
+      geom_boxplot() +
+      labs(title = "Boxplot of User Rating for Paid and Free Apps" )+
+      xlab("Free and Paid Apps") +
+      ylab("User Rating");
+```
+
+### Task 7: App with highest User Rating per byte
+
+```{r, max_UR/byte}
+##7
+dt_max_rpb <- apple_store %>% mutate(rpb = user_rating/size_bytes) %>% 
+              arrange(desc(rpb)) %>% 
+              select("Application name" = track_name) %>% 
+              slice(1)
+dt_max_rpb
+```
+
+-   **Graph Modeling** Application has the highest User Rating per byte value.
